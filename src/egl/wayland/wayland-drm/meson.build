@@ -70,3 +70,22 @@ linux_dmabuf_unstable_v1_client_protocol_h = custom_target(
   output : 'linux-dmabuf-unstable-v1-client-protocol.h',
   command : [prog_wl_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
 )
+
+
+# TODO: Grab from wayland-protocols.
+
+wayland_surface_suspension_v1_xml = 'surface-suspension-v1.xml'
+
+surface_suspension_v1_protocol_c = custom_target(
+  'surface-suspension-v1-protocol.c',
+  input : wayland_surface_suspension_v1_xml,
+  output : 'surface-suspension-v1-protocol.c',
+  command : [prog_wl_scanner, wl_scanner_arg, '@INPUT@', '@OUTPUT@'],
+)
+
+surface_suspension_v1_client_protocol_h = custom_target(
+  'surface-suspension-v1-client-protocol.h',
+  input : wayland_surface_suspension_v1_xml,
+  output : 'surface-suspension-v1-client-protocol.h',
+  command : [prog_wl_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
+)

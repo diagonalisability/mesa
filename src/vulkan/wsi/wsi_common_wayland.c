@@ -39,6 +39,7 @@
 #include "wsi_common_wayland.h"
 #include "wayland-drm-client-protocol.h"
 #include "linux-dmabuf-unstable-v1-client-protocol.h"
+#include "surface-suspension-v1-client-protocol.h"
 
 #include <util/compiler.h>
 #include <util/hash_table.h>
@@ -76,6 +77,8 @@ struct wsi_wl_display {
 
    /* Points to formats in wsi_wl_display_drm or wsi_wl_display_dmabuf */
    struct u_vector *                            formats;
+
+   struct wp_surface_suspension_manager_v1 *    suspension_manager;
 
    /* Only used for displays created by wsi_wl_display_create */
    uint32_t                                     refcount;
@@ -331,6 +334,10 @@ registry_handle_global(void *data, struct wl_registry *registry,
       zwp_linux_dmabuf_v1_add_listener(display->dmabuf.wl_dmabuf,
                                        &dmabuf_listener, display);
    }
+   else if (strcmp(interface, "wp_surface_suspension_manager_v1") == 0) {
+      display->suspension_manager =
+         wl_registry_bind(registry, name, &wp_surface_suspension_manager_v1_interface, 1);
+   }
 }
 
 static void
@@ -352,6 +359,8 @@ wsi_wl_display_finish(struct wsi_wl_display *display)
    u_vector_finish(&display->dmabuf.formats);
    u_vector_finish(&display->dmabuf.modifiers.argb8888);
    u_vector_finish(&display->dmabuf.modifiers.xrgb8888);
+   if (display->suspension_manager)
+      wp_surface_suspension_manager_v1_destroy(display->suspension_manager);
    if (display->drm.wl_drm)
       wl_drm_destroy(display->drm.wl_drm);
    if (display->dmabuf.wl_dmabuf)
@@ -532,11 +541,57 @@ static const VkPresentModeKHR present_modes[] = {
    VK_PRESENT_MODE_FIFO_KHR,
 };
 
+static void wsi_wl_surface_suspended(void *data, struct wp_surface_suspension_v1 *wp_surface_suspension_v1)
+{
+   bool *state = data;
+   *state = true;
+}
+
+static void wsi_wl_surface_resumed(void *data, struct wp_surface_suspension_v1 *wp_surface_suspension_v1)
+{
+   bool *state = data;
+   *state = false;
+}
+
+static struct wp_surface_suspension_v1_listener wsi_wl_surface_query_suspenstion_listener = {
+   .suspended = wsi_wl_surface_suspended,
+   .resumed = wsi_wl_surface_resumed,
+};
+
+static bool wsi_wl_surface_query_suspended(VkIcdSurfaceWayland *surface,
+                                     struct wsi_device *wsi_device,
+                                     struct wsi_wl_display *display)
+{
+   /* If we don't have the surface_suspension protocol, we do not know
+    * and must assume not and potentially block on AcquireNextImage. */
+   if (!display->suspension_manager)
+      return false;
+
+   struct wp_surface_suspension_v1 *surface_suspension =
+      wp_surface_suspension_manager_v1_get_surface_suspension(
+         display->suspension_manager, surface->surface);
+
+   wl_proxy_set_queue((struct wl_proxy *)surface_suspension, display->queue);
+
+   /* The suspended event is triggered instantly if the surface is currently
+      * suspended at surface_suspension creation time */
+   bool suspended = false;
+   wp_surface_suspension_v1_add_listener(surface_suspension, &wsi_wl_surface_query_suspenstion_listener, &suspended);
+
+   wl_display_dispatch_queue_pending(display->wl_display, display->queue);
+   wl_display_roundtrip_queue(display->wl_display, display->queue);
+
+   wp_surface_suspension_v1_destroy(surface_suspension);
+
+   return suspended;
+}
+
 static VkResult
-wsi_wl_surface_get_capabilities(VkIcdSurfaceBase *surface,
+wsi_wl_surface_get_capabilities(VkIcdSurfaceBase *icd_surface,
                                 struct wsi_device *wsi_device,
                                 VkSurfaceCapabilitiesKHR* caps)
 {
+   VkIcdSurfaceWayland *surface = (VkIcdSurfaceWayland *)icd_surface;
    /* For true mailbox mode, we need at least 4 images:
     *  1) One to scan out from
     *  2) One to have queued for scan-out
@@ -553,6 +608,26 @@ wsi_wl_surface_get_capabilities(VkIcdSurfaceBase *surface,
       wsi_device->maxImageDimension2D,
       wsi_device->maxImageDimension2D,
    };
+
+   /* Find out if suspended or not to report back to maxImageExtent, etc... 
+    * Create a device, a suspension object and check for the suspension event. */
+   {
+      struct wsi_wayland *wsi =
+         (struct wsi_wayland *)wsi_device->wsi[VK_ICD_WSI_PLATFORM_WAYLAND];
+
+      struct wsi_wl_display display;
+      if (wsi_wl_display_init(wsi, &display, surface->display, true))
+         return VK_ERROR_SURFACE_LOST_KHR;
+
+      if (wsi_wl_surface_query_suspended(surface, wsi_device, &display)) {
+         /* A min/max extent of 0 is used to indicate occlusion
+          * as it is invalid to make a swapchain with this. */
+         caps->minImageExtent = (VkExtent2D) { 0, 0 };
+         caps->maxImageExtent = (VkExtent2D) { 0, 0 };
+      }
+
+      wsi_wl_display_finish(&display);
+   }
 
    caps->supportedTransforms = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
    caps->currentTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
@@ -738,6 +813,7 @@ struct wsi_wl_swapchain {
    struct wl_drm *                              drm_wrapper;
 
    struct wl_callback *                         frame;
+   struct wp_surface_suspension_v1 *            surface_suspension;
 
    VkExtent2D                                   extent;
    VkFormat                                     vk_format;
@@ -748,6 +824,7 @@ struct wsi_wl_swapchain {
 
    VkPresentModeKHR                             present_mode;
    bool                                         fifo_ready;
+   bool                                         suspended;
 
    struct wsi_wl_image                          images[0];
 };
@@ -781,7 +858,10 @@ wsi_wl_swapchain_acquire_next_image(struct wsi_swapchain *wsi_chain,
       /* Try to dispatch potential events. */
       int ret = wl_display_dispatch_queue_pending(chain->display->wl_display,
                                                   chain->display->queue);
-      if (ret < 0)
+
+      /* If we're suspended, then return OUT_OF_DATE to avoid
+       * hanging forever until the window is unoccluded. */
+      if (ret < 0 || chain->suspended)
          return VK_ERROR_OUT_OF_DATE_KHR;
 
       /* Try to find a free image. */
@@ -863,10 +943,13 @@ wsi_wl_swapchain_queue_present(struct wsi_swapchain *wsi_chain,
       while (!chain->fifo_ready) {
          int ret = wl_display_dispatch_queue(chain->display->wl_display,
                                              chain->display->queue);
-         if (ret < 0)
+         if (ret < 0 || chain->suspended)
             return VK_ERROR_OUT_OF_DATE_KHR;
       }
    }
+
+   if (chain->suspended)
+      return VK_ERROR_OUT_OF_DATE_KHR;
 
    assert(image_index < chain->base.image_count);
    wl_surface_attach(chain->surface, chain->images[image_index].buffer, 0, 0);
@@ -991,6 +1074,9 @@ wsi_wl_swapchain_destroy(struct wsi_swapchain *wsi_chain,
 {
    struct wsi_wl_swapchain *chain = (struct wsi_wl_swapchain *)wsi_chain;
 
+   if (chain->surface_suspension)
+      wp_surface_suspension_v1_destroy(chain->surface_suspension);
+
    for (uint32_t i = 0; i < chain->base.image_count; i++) {
       if (chain->images[i].buffer) {
          wl_buffer_destroy(chain->images[i].buffer);
@@ -1015,6 +1101,23 @@ wsi_wl_swapchain_destroy(struct wsi_swapchain *wsi_chain,
    return VK_SUCCESS;
 }
 
+static void wsi_wl_swapchain_surface_suspended(void *data, struct wp_surface_suspension_v1 *wp_surface_suspension_v1)
+{
+   struct wsi_wl_swapchain *chain = data;
+   chain->suspended = true;
+}
+
+static void wsi_wl_swapchain_surface_resumed(void *data, struct wp_surface_suspension_v1 *wp_surface_suspension_v1)
+{
+   struct wsi_wl_swapchain *chain = data;
+   chain->suspended = false;
+}
+
+static struct wp_surface_suspension_v1_listener wsi_wl_swapchain_surface_suspension_listener = {
+   .suspended = wsi_wl_swapchain_surface_suspended,
+   .resumed = wsi_wl_swapchain_surface_resumed,
+};
+
 static VkResult
 wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
                                 VkDevice device,
@@ -1028,6 +1131,11 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
       (struct wsi_wayland *)wsi_device->wsi[VK_ICD_WSI_PLATFORM_WAYLAND];
    struct wsi_wl_swapchain *chain;
    VkResult result;
+   
+   /* Don't allow creating a swapchain if the input extents are (0, 0)
+    * from occlusion by surface capabiltiies. */
+   if (pCreateInfo->imageExtent.width == 0 || pCreateInfo->imageExtent.height == 0)
+      return VK_ERROR_INITIALIZATION_FAILED;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR);
 
@@ -1054,6 +1162,10 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    chain->surface = NULL;
    chain->drm_wrapper = NULL;
    chain->frame = NULL;
+   chain->surface_suspension = NULL;
+   /* If a surface is initially suspended we recieve an event
+    * indicating this instantly. */
+   chain->suspended = false;
 
    bool alpha = pCreateInfo->compositeAlpha ==
                       VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
@@ -1142,6 +1254,16 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
       if (result != VK_SUCCESS)
          goto fail;
       chain->images[i].busy = false;
+   }
+
+   /* Set up surface suspension callbacks if we have that protocol. */
+   if (chain->display->suspension_manager) {
+      chain->surface_suspension = wp_surface_suspension_manager_v1_get_surface_suspension(
+         chain->display->suspension_manager, chain->surface);
+
+      wl_proxy_set_queue((struct wl_proxy *)chain->surface_suspension, chain->display->queue);
+
+      wp_surface_suspension_v1_add_listener(chain->surface_suspension, &wsi_wl_swapchain_surface_suspension_listener, chain);
    }
 
    *swapchain_out = &chain->base;

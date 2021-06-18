@@ -35,6 +35,8 @@ if with_platform_wayland
     wayland_drm_protocol_c,
     linux_dmabuf_unstable_v1_client_protocol_h,
     linux_dmabuf_unstable_v1_protocol_c,
+    surface_suspension_v1_client_protocol_h,
+    surface_suspension_v1_protocol_c,
   ]
 endif
 
