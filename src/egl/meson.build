@@ -118,6 +118,8 @@ if with_dri2
     files_egl += [
       linux_dmabuf_unstable_v1_protocol_c,
       linux_dmabuf_unstable_v1_client_protocol_h,
+      surface_suspension_v1_protocol_c,
+      surface_suspension_v1_client_protocol_h,
       wayland_drm_client_protocol_h,
     ]
     incs_for_egl += include_directories('wayland/wayland-drm')

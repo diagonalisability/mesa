@@ -53,6 +53,8 @@ struct wl_registry;
 struct wl_shm;
 struct wl_surface;
 struct zwp_linux_dmabuf_v1;
+struct wp_surface_suspension_manager_v1;
+struct wp_surface_suspension_v1;
 #endif
 
 #include <GL/gl.h>
@@ -244,6 +246,7 @@ struct dri2_egl_display
    struct wl_shm            *wl_shm;
    struct wl_event_queue    *wl_queue;
    struct zwp_linux_dmabuf_v1 *wl_dmabuf;
+   struct wp_surface_suspension_manager_v1 *wl_suspension_manager;
    struct u_vector          *wl_modifiers;
    bool                      authenticated;
    BITSET_DECLARE(formats, EGL_DRI2_MAX_FORMATS);
@@ -293,15 +296,17 @@ struct dri2_egl_surface
 #endif
 
 #ifdef HAVE_WAYLAND_PLATFORM
-   struct wl_egl_window  *wl_win;
-   int                    dx;
-   int                    dy;
-   struct wl_event_queue *wl_queue;
-   struct wl_surface     *wl_surface_wrapper;
-   struct wl_display     *wl_dpy_wrapper;
-   struct wl_drm         *wl_drm_wrapper;
-   struct wl_callback    *throttle_callback;
-   int                    format;
+   struct wl_egl_window            *wl_win;
+   int                              dx;
+   int                              dy;
+   struct wl_event_queue           *wl_queue;
+   struct wl_surface               *wl_surface_wrapper;
+   struct wl_display               *wl_dpy_wrapper;
+   struct wl_drm                   *wl_drm_wrapper;
+   struct wl_callback              *throttle_callback;
+   struct wp_surface_suspension_v1 *wl_suspension;
+   bool                             suspended;
+   int                              format;
 #endif
 
 #ifdef HAVE_DRM_PLATFORM

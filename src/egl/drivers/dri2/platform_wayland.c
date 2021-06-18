@@ -50,6 +50,7 @@
 #include <wayland-client.h>
 #include "wayland-drm-client-protocol.h"
 #include "linux-dmabuf-unstable-v1-client-protocol.h"
+#include "surface-suspension-v1-client-protocol.h"
 
 /*
  * The index of entries in this table is used as a bitmask in
@@ -297,6 +298,23 @@ get_wl_surface_proxy(struct wl_egl_window *window)
    return wl_proxy_create_wrapper(window->surface);
 }
 
+static void surface_suspended(void *data, struct wp_surface_suspension_v1 *wp_surface_suspension_v1)
+{
+   struct dri2_egl_surface *dri2_surf = data;
+   dri2_surf->suspended = true;
+}
+
+static void surface_resumed(void *data, struct wp_surface_suspension_v1 *wp_surface_suspension_v1)
+{
+   struct dri2_egl_surface *dri2_surf = data;
+   dri2_surf->suspended = false;
+}
+
+static struct wp_surface_suspension_v1_listener surface_query_suspenstion_listener = {
+   .suspended = surface_suspended,
+   .resumed = surface_resumed,
+};
+
 /**
  * Called via eglCreateWindowSurface(), drv->CreateWindowSurface().
  */
@@ -374,6 +392,22 @@ dri2_wl_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
    wl_proxy_set_queue((struct wl_proxy *)dri2_surf->wl_surface_wrapper,
                       dri2_surf->wl_queue);
 
+   if (dri2_dpy->wl_suspension_manager) {
+      dri2_surf->wl_suspension =
+         wp_surface_suspension_manager_v1_get_surface_suspension(
+            dri2_dpy->wl_suspension_manager, dri2_surf->wl_surface_wrapper);
+      if (!dri2_surf->wl_suspension) {
+         _eglError(EGL_BAD_ALLOC, "dri2_create_surface");
+         goto cleanup_surf_wrapper;
+      }
+      wl_proxy_set_queue((struct wl_proxy *)dri2_surf->wl_suspension,
+                         dri2_surf->wl_queue);
+
+      wp_surface_suspension_v1_add_listener(dri2_surf->wl_suspension,
+                                            &surface_query_suspenstion_listener,
+                                            dri2_surf);
+   }
+
    dri2_surf->wl_win = window;
    dri2_surf->wl_win->driver_private = dri2_surf;
    dri2_surf->wl_win->destroy_window_callback = destroy_window_callback;
@@ -381,12 +415,15 @@ dri2_wl_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
       dri2_surf->wl_win->resize_callback = resize_callback;
 
    if (!dri2_create_drawable(dri2_dpy, config, dri2_surf, dri2_surf))
-       goto cleanup_surf_wrapper;
+       goto cleanup_suspend;
 
    dri2_surf->base.SwapInterval = dri2_dpy->default_swap_interval;
 
    return &dri2_surf->base;
 
+ cleanup_suspend:
+   if (dri2_surf->wl_suspension)
+      wp_surface_suspension_v1_destroy(dri2_surf->wl_suspension);
  cleanup_surf_wrapper:
    wl_proxy_wrapper_destroy(dri2_surf->wl_surface_wrapper);
  cleanup_dpy_wrapper:
@@ -452,6 +489,8 @@ dri2_wl_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
       dri2_surf->wl_win->destroy_window_callback = NULL;
    }
 
+   if (dri2_surf->wl_suspension)
+      wp_surface_suspension_v1_destroy(dri2_surf->wl_suspension);
    wl_proxy_wrapper_destroy(dri2_surf->wl_surface_wrapper);
    wl_proxy_wrapper_destroy(dri2_surf->wl_dpy_wrapper);
    if (dri2_surf->wl_drm_wrapper)
@@ -1033,10 +1072,14 @@ dri2_wl_swap_buffers_with_damage(_EGLDisplay *disp,
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(draw);
 
-   while (dri2_surf->throttle_callback != NULL)
-      if (wl_display_dispatch_queue(dri2_dpy->wl_dpy,
-                                    dri2_surf->wl_queue) == -1)
+   while (dri2_surf->throttle_callback != NULL) {
+      if (wl_display_dispatch_queue_pending(dri2_dpy->wl_dpy,
+                                            dri2_surf->wl_queue) == -1)
          return -1;
+
+      if (dri2_surf->suspended)
+         return _eglError(EGL_BAD_CURRENT_SURFACE, "dri2_swap_buffers");
+   }
 
    for (int i = 0; i < ARRAY_SIZE(dri2_surf->color_buffers); i++)
       if (dri2_surf->color_buffers[i].age > 0)
@@ -1321,6 +1364,9 @@ registry_handle_global_drm(void *data, struct wl_registry *registry,
                           MIN2(version, 3));
       zwp_linux_dmabuf_v1_add_listener(dri2_dpy->wl_dmabuf, &dmabuf_listener,
                                        dri2_dpy);
+   } else if (strcmp(interface, "wp_surface_suspension_manager_v1") == 0) {
+      dri2_dpy->wl_suspension_manager =
+         wl_registry_bind(registry, name, &wp_surface_suspension_manager_v1_interface, 1);
    }
 }
 
@@ -1770,10 +1816,14 @@ dri2_wl_swrast_commit_backbuffer(struct dri2_egl_surface *dri2_surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(dri2_surf->base.Resource.Display);
 
-   while (dri2_surf->throttle_callback != NULL)
-      if (wl_display_dispatch_queue(dri2_dpy->wl_dpy,
-                                    dri2_surf->wl_queue) == -1)
+   while (dri2_surf->throttle_callback != NULL) {
+      if (wl_display_dispatch_queue_pending(dri2_dpy->wl_dpy,
+                                            dri2_surf->wl_queue) == -1)
          return;
+
+      if (dri2_surf->suspended)
+         return;
+   }
 
    if (dri2_surf->base.SwapInterval > 0) {
       dri2_surf->throttle_callback =
@@ -1954,6 +2004,9 @@ registry_handle_global_swrast(void *data, struct wl_registry *registry,
       dri2_dpy->wl_shm =
          wl_registry_bind(registry, name, &wl_shm_interface, 1);
       wl_shm_add_listener(dri2_dpy->wl_shm, &shm_listener, dri2_dpy);
+   } else if (strcmp(interface, "wp_surface_suspension_manager_v1") == 0) {
+      dri2_dpy->wl_suspension_manager =
+         wl_registry_bind(registry, name, &wp_surface_suspension_manager_v1_interface, 1);
    }
 }
 
@@ -2088,6 +2141,8 @@ dri2_teardown_wayland(struct dri2_egl_display *dri2_dpy)
       wl_drm_destroy(dri2_dpy->wl_drm);
    if (dri2_dpy->wl_dmabuf)
       zwp_linux_dmabuf_v1_destroy(dri2_dpy->wl_dmabuf);
+   if (dri2_dpy->wl_suspension_manager)
+      wp_surface_suspension_manager_v1_destroy(dri2_dpy->wl_suspension_manager);
    if (dri2_dpy->wl_shm)
       wl_shm_destroy(dri2_dpy->wl_shm);
    if (dri2_dpy->wl_registry)
