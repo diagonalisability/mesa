@@ -247,7 +247,7 @@ bool
 d3d12_init_residency(struct d3d12_screen *screen)
 {
    list_inithead(&screen->residency_list);
-   if (FAILED(screen->dev->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&screen->residency_fence))))
+   if (FAILED(screen->dev->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_GRAPHICS_PPV_ARGS(&screen->residency_fence))))
       return false;
 
    return true;

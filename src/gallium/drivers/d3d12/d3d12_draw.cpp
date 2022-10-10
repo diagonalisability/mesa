@@ -44,10 +44,14 @@ extern "C" {
 #include "indices/u_primconvert.h"
 }
 
+#ifdef _GAMING_XBOX
+static const D3D12_RECT MAX_SCISSOR = { 0, 0, 16384, 16384 };
+#else
 static const D3D12_RECT MAX_SCISSOR = { D3D12_VIEWPORT_BOUNDS_MIN,
                                         D3D12_VIEWPORT_BOUNDS_MIN,
                                         D3D12_VIEWPORT_BOUNDS_MAX,
                                         D3D12_VIEWPORT_BOUNDS_MAX };
+#endif
 
 static const D3D12_RECT MAX_SCISSOR_ARRAY[] = {
    MAX_SCISSOR, MAX_SCISSOR, MAX_SCISSOR, MAX_SCISSOR,

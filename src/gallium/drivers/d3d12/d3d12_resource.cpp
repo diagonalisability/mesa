@@ -278,7 +278,7 @@ init_texture(struct d3d12_screen *screen,
                                                &desc,
                                                D3D12_RESOURCE_STATE_COMMON,
                                                nullptr,
-                                               IID_PPV_ARGS(&d3d12_res));
+                                               IID_GRAPHICS_PPV_ARGS(&d3d12_res));
    } else {
       D3D12_HEAP_PROPERTIES heap_pris = GetCustomHeapProperties(screen->dev, D3D12_HEAP_TYPE_DEFAULT);
 
@@ -291,7 +291,7 @@ init_texture(struct d3d12_screen *screen,
                                                   &desc,
                                                   D3D12_RESOURCE_STATE_COMMON,
                                                   NULL,
-                                                  IID_PPV_ARGS(&d3d12_res));
+                                                  IID_GRAPHICS_PPV_ARGS(&d3d12_res));
    }
 
    if (FAILED(hres))
@@ -426,6 +426,7 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
 {
    struct d3d12_screen *screen = d3d12_screen(pscreen);
    if (handle->type != WINSYS_HANDLE_TYPE_D3D12_RES &&
+       handle->type != WINSYS_HANDLE_TYPE_D3D12_HEAP &&
        handle->type != WINSYS_HANDLE_TYPE_FD &&
        handle->type != WINSYS_HANDLE_TYPE_WIN32_NAME)
       return NULL;
@@ -462,12 +463,11 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
    if (res->bo) {
       d3d12_res = res->bo->res;
    } else if (handle->type == WINSYS_HANDLE_TYPE_D3D12_RES) {
-      IUnknown *obj = (IUnknown *)handle->com_obj;
-      (void)obj->QueryInterface(&d3d12_res);
-      (void)obj->QueryInterface(&d3d12_heap);
-      obj->Release();
+      d3d12_res = (ID3D12Resource*)handle->com_obj;
+   } else if (handle->type == WINSYS_HANDLE_TYPE_D3D12_HEAP) {
+      d3d12_heap = (ID3D12Heap*)handle->com_obj;
    } else {
-      screen->dev->OpenSharedHandle(d3d_handle, IID_PPV_ARGS(&d3d12_res));
+      screen->dev->OpenSharedHandle(d3d_handle, IID_GRAPHICS_PPV_ARGS(&d3d12_res));
    }
 
 #ifdef _WIN32
@@ -926,7 +926,7 @@ d3d12_resource_from_memobj(struct pipe_screen *pscreen,
    struct d3d12_memory_object *memobj = d3d12_memory_object(pmemobj);
 
    struct winsys_handle whandle = {};
-   whandle.type = WINSYS_HANDLE_TYPE_D3D12_RES;
+   whandle.type = memobj->res ? WINSYS_HANDLE_TYPE_D3D12_RES : WINSYS_HANDLE_TYPE_D3D12_HEAP;
    whandle.com_obj = memobj->res ? (void *) memobj->res : (void *) memobj->heap;
    whandle.offset = offset;
    whandle.format = templ->format;

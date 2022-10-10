@@ -62,6 +62,11 @@
 #include "tr_screen.h"
 #include "tr_texture.h"
 
+#ifdef _GAMING_XBOX
+#define unlink _unlink
+#define access _access
+#endif
+
 
 static bool close_stream = false;
 static FILE *stream = NULL;

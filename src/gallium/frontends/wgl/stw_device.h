@@ -42,6 +42,12 @@
 extern "C" {
 #endif
 
+#ifdef _GAMING_XBOX
+#define WindowFromDC(hdc) (HWND)hdc
+#define GetDC(hwnd) (HDC)hwnd
+#define ReleaseDC(hwnd, hdc) 1
+#endif
+
 struct pipe_screen;
 struct st_api;
 struct st_manager;

@@ -57,7 +57,9 @@ struct gdi_sw_displaytarget
 
    void *data;
 
+#ifndef _GAMING_XBOX
    BITMAPINFO bmi;
+#endif
 };
 
 
@@ -149,6 +151,7 @@ gdi_sw_displaytarget_create(struct sw_winsys *winsys,
    if(!gdt->data)
       goto no_data;
 
+#ifndef _GAMING_XBOX
    gdt->bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
    gdt->bmi.bmiHeader.biWidth = gdt->stride / cpp;
    gdt->bmi.bmiHeader.biHeight= -(long)height;
@@ -160,6 +163,7 @@ gdi_sw_displaytarget_create(struct sw_winsys *winsys,
    gdt->bmi.bmiHeader.biYPelsPerMeter = 0;
    gdt->bmi.bmiHeader.biClrUsed = 0;
    gdt->bmi.bmiHeader.biClrImportant = 0;
+#endif
 
    *stride = gdt->stride;
    return (struct sw_displaytarget *)gdt;
@@ -197,12 +201,14 @@ gdi_sw_display( struct sw_winsys *winsys,
                 struct sw_displaytarget *dt,
                 HDC hDC )
 {
+#ifndef _GAMING_XBOX
     struct gdi_sw_displaytarget *gdt = gdi_sw_displaytarget(dt);
 
     StretchDIBits(hDC,
                   0, 0, gdt->width, gdt->height,
                   0, 0, gdt->width, gdt->height,
                   gdt->data, &gdt->bmi, 0, SRCCOPY);
+#endif
 }
 
 static void

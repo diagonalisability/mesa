@@ -29,6 +29,11 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifdef _GAMING_XBOX
+#define strdup _strdup
+#define stricmp _stricmp
+#endif
+
 /* Compute the size of an array */
 #ifndef ARRAY_SIZE
 #  define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))

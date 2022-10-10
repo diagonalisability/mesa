@@ -26,6 +26,11 @@
 
 #include <specstrings.h>
 
+#ifdef _GAMING_XBOX
+typedef void* HMONITOR;
+#include "stw_gdishim.h"
+#endif
+
 // Number of entries expected for various versions of OpenGL
 #define OPENGL_VERSION_100_ENTRIES      306
 #define OPENGL_VERSION_110_ENTRIES      336

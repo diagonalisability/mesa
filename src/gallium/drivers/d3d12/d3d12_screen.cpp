@@ -50,7 +50,9 @@
 #include "nir_to_dxil.h"
 #include "git_sha1.h"
 
+#ifndef _GAMING_XBOX
 #include <directx/d3d12sdklayers.h>
+#endif
 
 #include <dxguids/dxguids.h>
 static GUID OpenGLOn12CreatorID = { 0x6bb3cd34, 0x0d19, 0x45ab, { 0x97, 0xed, 0xd7, 0x20, 0xba, 0x3d, 0xfc, 0x80 } };
@@ -770,10 +772,10 @@ d3d12_flush_frontbuffer(struct pipe_screen * pscreen,
       winsys->displaytarget_unmap(winsys, res->dt);
    }
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(_GAMING_XBOX)
    // WindowFromDC is Windows-only, and this method requires an HWND, so only use it on Windows
    ID3D12SharingContract *sharing_contract;
-   if (SUCCEEDED(screen->cmdqueue->QueryInterface(IID_PPV_ARGS(&sharing_contract)))) {
+   if (SUCCEEDED(screen->cmdqueue->QueryInterface(IID_GRAPHICS_PPV_ARGS(&sharing_contract)))) {
       ID3D12Resource *d3d12_res = d3d12_resource_resource(res);
       sharing_contract->Present(d3d12_res, 0, WindowFromDC((HDC)winsys_drawable_handle));
    }
@@ -801,7 +803,7 @@ get_debug_interface()
    }
 
    ID3D12Debug *debug;
-   if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug)))) {
+   if (FAILED(D3D12GetDebugInterface(IID_GRAPHICS_PPV_ARGS(&debug)))) {
       debug_printf("D3D12: D3D12GetDebugInterface failed\n");
       return NULL;
    }
@@ -825,13 +827,53 @@ enable_gpu_validation()
    ID3D12Debug *debug = get_debug_interface();
    ID3D12Debug3 *debug3;
    if (debug) {
-      if (SUCCEEDED(debug->QueryInterface(IID_PPV_ARGS(&debug3)))) {
+      if (SUCCEEDED(debug->QueryInterface(IID_GRAPHICS_PPV_ARGS(&debug3)))) {
          debug3->SetEnableGPUBasedValidation(true);
          debug3->Release();
       }
       debug->Release();
    }
 }
+
+#ifdef _GAMING_XBOX
+
+static ID3D12Device3 *
+create_device(IUnknown *adapter)
+{
+   D3D12XBOX_PROCESS_DEBUG_FLAGS debugFlags =
+      D3D12XBOX_PROCESS_DEBUG_FLAG_ENABLE_COMMON_STATE_PROMOTION; /* For compatibility with desktop D3D12 */
+
+   if (d3d12_debug & D3D12_DEBUG_EXPERIMENTAL)
+   {
+      debug_printf("D3D12: experimental shader models are not supported on GDKX\n");
+      return nullptr;
+   }
+
+   if (d3d12_debug & D3D12_DEBUG_GPU_VALIDATOR) {
+      debug_printf("D3D12: gpu validation is not supported on GDKX\n"); /* FIXME: Is this right? */
+      return nullptr;
+   }
+
+   if (d3d12_debug & D3D12_DEBUG_DEBUG_LAYER)
+      debugFlags |= D3D12XBOX_PROCESS_DEBUG_FLAG_DEBUG;
+
+   D3D12XBOX_CREATE_DEVICE_PARAMETERS params = {};
+   params.Version = D3D12_SDK_VERSION;
+   params.ProcessDebugFlags = debugFlags;
+   params.GraphicsCommandQueueRingSizeBytes = D3D12XBOX_DEFAULT_SIZE_BYTES;
+   params.GraphicsScratchMemorySizeBytes = D3D12XBOX_DEFAULT_SIZE_BYTES;
+   params.ComputeScratchMemorySizeBytes = D3D12XBOX_DEFAULT_SIZE_BYTES;
+
+   ID3D12Device3 *dev;
+   HRESULT res = D3D12XboxCreateDevice(NULL, &params, IID_GRAPHICS_PPV_ARGS(&dev));
+   if (SUCCEEDED(res))
+      return dev;
+
+   debug_printf("D3D12: D3D12XboxCreateDevice failed %d\n", res);
+   return NULL;
+}
+
+#else
 
 static ID3D12Device3 *
 create_device(IUnknown *adapter)
@@ -866,12 +908,14 @@ create_device(IUnknown *adapter)
 
    ID3D12Device3 *dev;
    if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0,
-                 IID_PPV_ARGS(&dev))))
+                 IID_GRAPHICS_PPV_ARGS(&dev))))
       return dev;
 
    debug_printf("D3D12: D3D12CreateDevice failed\n");
    return NULL;
 }
+
+#endif /* _GAMING_XBOX */
 
 static bool
 can_attribute_at_vertex(struct d3d12_screen *screen)
@@ -1163,6 +1207,7 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
 {
    assert(screen->base.destroy != nullptr);
 
+#ifndef _GAMING_XBOX
 #ifndef DEBUG
    if (d3d12_debug & D3D12_DEBUG_DEBUG_LAYER)
 #endif
@@ -1170,6 +1215,7 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
 
    if (d3d12_debug & D3D12_DEBUG_GPU_VALIDATOR)
       enable_gpu_validation();
+#endif /* _GAMING_XBOX */
 
    screen->dev = create_device(adapter);
 
@@ -1180,8 +1226,9 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
 
    screen->adapter_luid = GetAdapterLuid(screen->dev);
 
+#ifndef _GAMING_XBOX
    ID3D12InfoQueue *info_queue;
-   if (SUCCEEDED(screen->dev->QueryInterface(IID_PPV_ARGS(&info_queue)))) {
+   if (SUCCEEDED(screen->dev->QueryInterface(IID_GRAPHICS_PPV_ARGS(&info_queue)))) {
       D3D12_MESSAGE_SEVERITY severities[] = {
          D3D12_MESSAGE_SEVERITY_INFO,
          D3D12_MESSAGE_SEVERITY_WARNING,
@@ -1200,6 +1247,7 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
       info_queue->PushStorageFilter(&NewFilter);
       info_queue->Release();
    }
+#endif /* _GAMING_XBOX */
 
    if (FAILED(screen->dev->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS,
                                                &screen->opts,
@@ -1275,19 +1323,23 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
    queue_desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
    queue_desc.NodeMask = 0;
 
+#ifndef _GAMING_XBOX
    ID3D12Device9 *device9;
    if (SUCCEEDED(screen->dev->QueryInterface(&device9))) {
       if (FAILED(device9->CreateCommandQueue1(&queue_desc, OpenGLOn12CreatorID,
-                                              IID_PPV_ARGS(&screen->cmdqueue))))
+                                              IID_GRAPHICS_PPV_ARGS(&screen->cmdqueue))))
          return false;
       device9->Release();
-   } else {
+   }
+   else
+#endif
+   {
       if (FAILED(screen->dev->CreateCommandQueue(&queue_desc,
-                                                 IID_PPV_ARGS(&screen->cmdqueue))))
+                                                 IID_GRAPHICS_PPV_ARGS(&screen->cmdqueue))))
          return false;
    }
 
-   if (FAILED(screen->dev->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&screen->fence))))
+   if (FAILED(screen->dev->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_GRAPHICS_PPV_ARGS(&screen->fence))))
       return false;
 
    if (!d3d12_init_residency(screen))
@@ -1350,11 +1402,14 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
 
    screen->have_load_at_vertex = can_attribute_at_vertex(screen);
    screen->support_shader_images = can_shader_image_load_all_formats(screen);
+
+#ifndef _GAMING_XBOX
    ID3D12Device8 *dev8;
    if (SUCCEEDED(screen->dev->QueryInterface(&dev8))) {
       dev8->Release();
       screen->support_create_not_resident = true;
    }
+#endif
 
    screen->nir_options = *dxil_get_nir_compiler_options();
 

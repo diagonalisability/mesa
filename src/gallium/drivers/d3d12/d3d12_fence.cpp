@@ -49,9 +49,9 @@ d3d12_create_fence(struct d3d12_screen *screen)
    ret->cmdqueue_fence = screen->fence;
    ret->value = ++screen->fence_value;
    ret->event = d3d12_fence_create_event(&ret->event_fd);
-   if (FAILED(screen->fence->SetEventOnCompletion(ret->value, ret->event)))
-      goto fail;
    if (FAILED(screen->cmdqueue->Signal(screen->fence, ret->value)))
+      goto fail;
+   if (FAILED(screen->fence->SetEventOnCompletion(ret->value, ret->event)))
       goto fail;
 
    pipe_reference_init(&ret->reference, 1);
@@ -78,7 +78,7 @@ d3d12_open_fence(struct d3d12_screen *screen, HANDLE handle, const void *name)
       handle = handle_to_close;
    }
 
-   screen->dev->OpenSharedHandle(handle, IID_PPV_ARGS(&ret->cmdqueue_fence));
+   screen->dev->OpenSharedHandle(handle, IID_GRAPHICS_PPV_ARGS(&ret->cmdqueue_fence));
    if (!ret->cmdqueue_fence) {
       free(ret);
       return NULL;

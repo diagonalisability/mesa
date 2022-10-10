@@ -132,10 +132,12 @@ DBGHELP_DISPATCH(SymSetOptions,
                  (DWORD SymOptions),
                  (SymOptions))
 
+#ifndef _GAMING_XBOX
 DBGHELP_DISPATCH(SymFromAddr,
                  BOOL, FALSE,
                  (HANDLE hProcess, DWORD64 Address, PDWORD64 Displacement, PSYMBOL_INFO Symbol),
                  (hProcess, Address, Displacement, Symbol))
+#endif
 
 DBGHELP_DISPATCH(SymGetLineFromAddr64,
                  BOOL, FALSE,
@@ -151,6 +153,7 @@ DBGHELP_DISPATCH(SymCleanup, BOOL, FALSE, (HANDLE hProcess), (hProcess))
 static inline boolean
 debug_symbol_name_dbghelp(const void *addr, char* buf, unsigned size)
 {
+#ifndef _GAMING_XBOX
    DWORD64 dwAddr = (DWORD64)(uintptr_t)addr;
    HANDLE hProcess = GetCurrentProcess();
 
@@ -224,6 +227,9 @@ debug_symbol_name_dbghelp(const void *addr, char* buf, unsigned size)
    }
 
    return TRUE;
+#else
+   return FALSE;
+#endif /* _GAMING_XBOX */
 }
 
 #endif /* PIPE_OS_WINDOWS */

@@ -35,7 +35,13 @@ static HMODULE
 load_dxil_mod()
 {
    /* First, try to load DXIL.dll from the default search-path */
+#if defined(_GAMING_XBOX_SCARLETT)
+   HMODULE mod = LoadLibraryA("dxcompiler_xs.dll");
+#elif defined (_GAMING_XBOX)
+   HMODULE mod = LoadLibraryA("dxcompiler_x.dll");
+#else
    HMODULE mod = LoadLibraryA("DXIL.dll");
+#endif
    if (mod)
       return mod;
 

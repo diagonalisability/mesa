@@ -218,7 +218,7 @@ create_root_signature(struct d3d12_context *ctx, struct d3d12_root_signature_key
    if (FAILED(screen->dev->CreateRootSignature(0,
                                                sig->GetBufferPointer(),
                                                sig->GetBufferSize(),
-                                               IID_PPV_ARGS(&ret)))) {
+                                               IID_GRAPHICS_PPV_ARGS(&ret)))) {
       debug_printf("CreateRootSignature failed\n");
       return NULL;
    }

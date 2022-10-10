@@ -73,7 +73,11 @@ if with_gallium_d3d12_video
 endif
 
 if host_machine.system() == 'windows'
-  files_libd3d12 += files('d3d12_dxgi_screen.cpp')
+  if target_machine.system().startswith('Gaming.Xbox')
+    files_libd3d12 += files('d3d12_dxgi_xbox_screen.cpp')
+  else
+    files_libd3d12 += files('d3d12_dxgi_screen.cpp')
+  endif
 endif
 
 libd3d12 = static_library(

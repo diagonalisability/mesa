@@ -105,7 +105,7 @@ os_log_message(const char *message)
          fout = stderr;
    }
 
-#if DETECT_OS_WINDOWS
+#if DETECT_OS_WINDOWS && !defined(_GAMING_XBOX)
    OutputDebugStringA(message);
    if(GetConsoleWindow() && !IsDebuggerPresent()) {
       fflush(stdout);
@@ -116,7 +116,7 @@ os_log_message(const char *message)
       fputs(message, fout);
       fflush(fout);
    }
-#else /* !DETECT_OS_WINDOWS */
+#else /* !DETECT_OS_WINDOWS || defined(_GAMING_XBOX) */
    fflush(stdout);
    fputs(message, fout);
    fflush(fout);

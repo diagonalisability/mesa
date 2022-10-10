@@ -48,6 +48,7 @@
 static LRESULT CALLBACK
 WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+#ifndef _GAMING_XBOX
     MINMAXINFO *pMMI;
     switch (uMsg) {
     case WM_GETMINMAXINFO:
@@ -61,6 +62,7 @@ WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     default:
         break;
     }
+#endif /* _GAMING_XBOX */
 
     return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }

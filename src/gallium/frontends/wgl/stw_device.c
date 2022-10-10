@@ -71,6 +71,7 @@ stw_get_param(struct st_manager *smapi,
 static int
 get_refresh_rate(void)
 {
+#ifndef _GAMING_XBOX
    DEVMODE devModes;
 
    if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &devModes)) {
@@ -81,6 +82,9 @@ get_refresh_rate(void)
       /* reasonable default */
       return 60;
    }
+#else
+   return 60;
+#endif /* _GAMING_XBOX */
 }
 
 static bool

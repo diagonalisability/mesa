@@ -48,6 +48,10 @@
 #include "stw_wgl.h"
 #include "stw_ext_context.h"
 
+#ifdef _GAMING_XBOX
+WINGDIAPI BOOL  WINAPI wglDeleteContext(HGLRC);
+#endif
+
 WINGDIAPI BOOL APIENTRY
 wglCopyContext(
    HGLRC hglrcSrc,
@@ -223,6 +227,7 @@ wglUseFontBitmapsW(
    DWORD count,
    DWORD listBase )
 {
+#ifndef _GAMING_XBOX
    GLYPHMETRICS gm;
    MAT2 tra;
    FIXED one, minus_one, zero;
@@ -273,7 +278,14 @@ wglUseFontBitmapsW(
    free(buffer);
 
    return result;
+#else
+   return FALSE;
+#endif /* _GAMING_XBOX */
 }
+
+#ifdef _GAMING_XBOX
+#define LPGLYPHMETRICSFLOAT void*
+#endif
 
 WINGDIAPI BOOL APIENTRY
 wglUseFontOutlinesA(

@@ -2543,6 +2543,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    d3d12_compute_transform_cache_init(ctx);
    d3d12_context_state_table_init(ctx);
 
+#ifndef _GAMING_XBOX
    util_dl_library *d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
    if (!d3d12_mod) {
       debug_printf("D3D12: failed to load D3D12.DLL\n");
@@ -2550,6 +2551,9 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    }
    ctx->D3D12SerializeVersionedRootSignature =
       (PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE)util_dl_get_proc_address(d3d12_mod, "D3D12SerializeVersionedRootSignature");
+#else
+   ctx->D3D12SerializeVersionedRootSignature = D3D12SerializeVersionedRootSignature;
+#endif
 
    ctx->submit_id = (uint64_t)p_atomic_add_return(&screen->ctx_count, 1) << 32ull;
 

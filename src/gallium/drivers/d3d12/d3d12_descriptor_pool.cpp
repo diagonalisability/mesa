@@ -68,7 +68,7 @@ d3d12_descriptor_heap_new(ID3D12Device *dev,
    heap->desc.Type = type;
    heap->desc.Flags = flags;
    if (FAILED(dev->CreateDescriptorHeap(&heap->desc,
-                                        IID_PPV_ARGS(&heap->heap)))) {
+                                        IID_GRAPHICS_PPV_ARGS(&heap->heap)))) {
       FREE(heap);
       return NULL;
    }
