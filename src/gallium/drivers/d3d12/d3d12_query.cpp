@@ -168,7 +168,7 @@ d3d12_create_query(struct pipe_context *pctx,
          break;
       }
       if (FAILED(screen->dev->CreateQueryHeap(&desc,
-                                              IID_GRAPHICS_PPV_ARGS(&query->subqueries[i].query_heap)))) {
+                                              IID_PPV_ARGS(&query->subqueries[i].query_heap)))) {
          FREE(query);
          return NULL;
       }

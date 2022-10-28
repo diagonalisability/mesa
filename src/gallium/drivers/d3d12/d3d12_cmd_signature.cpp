@@ -57,7 +57,7 @@ create_cmd_signature(struct d3d12_context *ctx, const struct d3d12_cmd_signature
 
    ID3D12CommandSignature *ret = nullptr;
    d3d12_screen(ctx->base.screen)->dev->CreateCommandSignature(&cmd_sig_desc, key->root_sig,
-      IID_GRAPHICS_PPV_ARGS(&ret));
+      IID_PPV_ARGS(&ret));
    return ret;
 }
 

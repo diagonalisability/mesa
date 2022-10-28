@@ -145,7 +145,7 @@ d3d12_bo_new(struct d3d12_screen *screen, uint64_t size, const pb_desc *pb_desc)
                                                &res_desc,
                                                D3D12_RESOURCE_STATE_COMMON,
                                                NULL,
-                                               IID_GRAPHICS_PPV_ARGS(&res));
+                                               IID_PPV_ARGS(&res));
 
    if (FAILED(hres))
       return NULL;

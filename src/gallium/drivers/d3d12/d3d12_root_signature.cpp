@@ -21,6 +21,9 @@
  * IN THE SOFTWARE.
  */
 
+#include <wrl/client.h>
+using Microsoft::WRL::ComPtr;
+
 #include "d3d12_root_signature.h"
 #include "d3d12_compiler.h"
 #include "d3d12_screen.h"
@@ -28,9 +31,6 @@
 #include "util/u_memory.h"
 
 #include <dxguids/dxguids.h>
-
-#include <wrl/client.h>
-using Microsoft::WRL::ComPtr;
 
 struct d3d12_root_signature {
    struct d3d12_root_signature_key key;
@@ -218,7 +218,7 @@ create_root_signature(struct d3d12_context *ctx, struct d3d12_root_signature_key
    if (FAILED(screen->dev->CreateRootSignature(0,
                                                sig->GetBufferPointer(),
                                                sig->GetBufferSize(),
-                                               IID_GRAPHICS_PPV_ARGS(&ret)))) {
+                                               IID_PPV_ARGS(&ret)))) {
       debug_printf("CreateRootSignature failed\n");
       return NULL;
    }

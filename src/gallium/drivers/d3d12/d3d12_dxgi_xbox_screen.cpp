@@ -79,7 +79,7 @@ d3d12_init_dxgi_screen(struct d3d12_screen *dscreen)
    struct d3d12_dxgi_screen *screen = d3d12_dxgi_screen(dscreen);
    IDXGIDevice1 *dxgiDevice = nullptr;
 
-   if (FAILED(dscreen->dev->QueryInterface(IID_GRAPHICS_PPV_ARGS(&dxgiDevice)))) {
+   if (FAILED(dscreen->dev->QueryInterface(IID_PPV_ARGS(&dxgiDevice)))) {
       debug_printf("D3D12: failed to query dxgi interface\n");
       return false;
    }

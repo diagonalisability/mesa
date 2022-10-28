@@ -58,7 +58,7 @@ d3d12_init_batch(struct d3d12_context *ctx, struct d3d12_batch *batch)
    util_dynarray_init(&batch->zombie_samplers, NULL);
 
    if (FAILED(screen->dev->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
-                                                  IID_GRAPHICS_PPV_ARGS(&batch->cmdalloc))))
+                                                  IID_PPV_ARGS(&batch->cmdalloc))))
       return false;
 
 
@@ -175,7 +175,7 @@ d3d12_start_batch(struct d3d12_context *ctx, struct d3d12_batch *batch)
    } else {
       if (FAILED(screen->dev->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
                                                 batch->cmdalloc, NULL,
-                                                IID_GRAPHICS_PPV_ARGS(&ctx->cmdlist)))) {
+                                                IID_PPV_ARGS(&ctx->cmdlist)))) {
          debug_printf("D3D12: creating ID3D12GraphicsCommandList failed\n");
          batch->has_errors = true;
          return;

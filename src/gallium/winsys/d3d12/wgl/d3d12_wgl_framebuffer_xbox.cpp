@@ -102,14 +102,14 @@ d3d12_wgl_framebuffer_resize(stw_winsys_framebuffer *fb,
       descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
       descHeapDesc.NumDescriptors = num_buffers;
       framebuffer->screen->dev->CreateDescriptorHeap(&descHeapDesc,
-                                                     IID_GRAPHICS_PPV_ARGS(&framebuffer->rtvHeap));
+                                                     IID_PPV_ARGS(&framebuffer->rtvHeap));
    }
 
    if (!has_signaled_first_time)
    {
       // First, retrieve the underlying DXGI device from the D3D device.
       IDXGIDevice1 *dxgiDevice;
-      framebuffer->screen->dev->QueryInterface(IID_GRAPHICS_PPV_ARGS(&dxgiDevice));
+      framebuffer->screen->dev->QueryInterface(IID_PPV_ARGS(&dxgiDevice));
 
       // Identify the physical adapter (GPU or card) that this device is running on.
       IDXGIAdapter *dxgiAdapter;
@@ -180,7 +180,7 @@ d3d12_wgl_framebuffer_resize(stw_winsys_framebuffer *fb,
          &resDesc,
          D3D12_RESOURCE_STATE_PRESENT,
          &optimizedClearValue,
-         IID_GRAPHICS_PPV_ARGS(&framebuffer->images[i])
+         IID_PPV_ARGS(&framebuffer->images[i])
       ))) {
          assert(0);
       }

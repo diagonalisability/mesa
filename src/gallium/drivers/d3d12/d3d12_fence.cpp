@@ -78,7 +78,7 @@ d3d12_open_fence(struct d3d12_screen *screen, HANDLE handle, const void *name)
       handle = handle_to_close;
    }
 
-   screen->dev->OpenSharedHandle(handle, IID_GRAPHICS_PPV_ARGS(&ret->cmdqueue_fence));
+   screen->dev->OpenSharedHandle(handle, IID_PPV_ARGS(&ret->cmdqueue_fence));
    if (!ret->cmdqueue_fence) {
       free(ret);
       return NULL;

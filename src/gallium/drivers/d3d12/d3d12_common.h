@@ -36,13 +36,18 @@
 #ifndef _GAMING_XBOX
 #include <directx/d3d12.h>
 #include <directx/d3d12video.h>
-#define IID_GRAPHICS_PPV_ARGS IID_PPV_ARGS
 #elif defined(__cplusplus)
 #ifdef _GAMING_XBOX_SCARLETT
 #include <d3d12_xs.h>
+#include <d3d12video_xs.h>
 #else
 #include <d3d12_x.h>
+#include <d3d12video_x.h>
 #endif
+#ifdef IID_PPV_ARGS
+#undef IID_PPV_ARGS
+#endif
+#define IID_PPV_ARGS IID_GRAPHICS_PPV_ARGS
 #define D3D12_HEAP_FLAG_CREATE_NOT_RESIDENT (D3D12_HEAP_FLAGS) 0x800
 #endif /* _GAMING_XBOX */
 

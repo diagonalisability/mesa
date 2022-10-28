@@ -775,7 +775,7 @@ d3d12_flush_frontbuffer(struct pipe_screen * pscreen,
 #if defined(_WIN32) && !defined(_GAMING_XBOX)
    // WindowFromDC is Windows-only, and this method requires an HWND, so only use it on Windows
    ID3D12SharingContract *sharing_contract;
-   if (SUCCEEDED(screen->cmdqueue->QueryInterface(IID_GRAPHICS_PPV_ARGS(&sharing_contract)))) {
+   if (SUCCEEDED(screen->cmdqueue->QueryInterface(IID_PPV_ARGS(&sharing_contract)))) {
       ID3D12Resource *d3d12_res = d3d12_resource_resource(res);
       sharing_contract->Present(d3d12_res, 0, WindowFromDC((HDC)winsys_drawable_handle));
    }
@@ -803,7 +803,7 @@ get_debug_interface()
    }
 
    ID3D12Debug *debug;
-   if (FAILED(D3D12GetDebugInterface(IID_GRAPHICS_PPV_ARGS(&debug)))) {
+   if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug)))) {
       debug_printf("D3D12: D3D12GetDebugInterface failed\n");
       return NULL;
    }
@@ -827,7 +827,7 @@ enable_gpu_validation()
    ID3D12Debug *debug = get_debug_interface();
    ID3D12Debug3 *debug3;
    if (debug) {
-      if (SUCCEEDED(debug->QueryInterface(IID_GRAPHICS_PPV_ARGS(&debug3)))) {
+      if (SUCCEEDED(debug->QueryInterface(IID_PPV_ARGS(&debug3)))) {
          debug3->SetEnableGPUBasedValidation(true);
          debug3->Release();
       }
@@ -865,7 +865,7 @@ create_device(IUnknown *adapter)
    params.ComputeScratchMemorySizeBytes = D3D12XBOX_DEFAULT_SIZE_BYTES;
 
    ID3D12Device3 *dev;
-   HRESULT res = D3D12XboxCreateDevice(NULL, &params, IID_GRAPHICS_PPV_ARGS(&dev));
+   HRESULT res = D3D12XboxCreateDevice(NULL, &params, IID_PPV_ARGS(&dev));
    if (SUCCEEDED(res))
       return dev;
 
@@ -908,7 +908,7 @@ create_device(IUnknown *adapter)
 
    ID3D12Device3 *dev;
    if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0,
-                 IID_GRAPHICS_PPV_ARGS(&dev))))
+                 IID_PPV_ARGS(&dev))))
       return dev;
 
    debug_printf("D3D12: D3D12CreateDevice failed\n");
@@ -1228,7 +1228,7 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
 
 #ifndef _GAMING_XBOX
    ID3D12InfoQueue *info_queue;
-   if (SUCCEEDED(screen->dev->QueryInterface(IID_GRAPHICS_PPV_ARGS(&info_queue)))) {
+   if (SUCCEEDED(screen->dev->QueryInterface(IID_PPV_ARGS(&info_queue)))) {
       D3D12_MESSAGE_SEVERITY severities[] = {
          D3D12_MESSAGE_SEVERITY_INFO,
          D3D12_MESSAGE_SEVERITY_WARNING,
@@ -1327,7 +1327,7 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
    ID3D12Device9 *device9;
    if (SUCCEEDED(screen->dev->QueryInterface(&device9))) {
       if (FAILED(device9->CreateCommandQueue1(&queue_desc, OpenGLOn12CreatorID,
-                                              IID_GRAPHICS_PPV_ARGS(&screen->cmdqueue))))
+                                              IID_PPV_ARGS(&screen->cmdqueue))))
          return false;
       device9->Release();
    }
@@ -1335,11 +1335,11 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
 #endif
    {
       if (FAILED(screen->dev->CreateCommandQueue(&queue_desc,
-                                                 IID_GRAPHICS_PPV_ARGS(&screen->cmdqueue))))
+                                                 IID_PPV_ARGS(&screen->cmdqueue))))
          return false;
    }
 
-   if (FAILED(screen->dev->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_GRAPHICS_PPV_ARGS(&screen->fence))))
+   if (FAILED(screen->dev->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&screen->fence))))
       return false;
 
    if (!d3d12_init_residency(screen))

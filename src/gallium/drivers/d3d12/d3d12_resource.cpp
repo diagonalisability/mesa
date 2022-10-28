@@ -278,7 +278,7 @@ init_texture(struct d3d12_screen *screen,
                                                &desc,
                                                D3D12_RESOURCE_STATE_COMMON,
                                                nullptr,
-                                               IID_GRAPHICS_PPV_ARGS(&d3d12_res));
+                                               IID_PPV_ARGS(&d3d12_res));
    } else {
       D3D12_HEAP_PROPERTIES heap_pris = GetCustomHeapProperties(screen->dev, D3D12_HEAP_TYPE_DEFAULT);
 
@@ -291,7 +291,7 @@ init_texture(struct d3d12_screen *screen,
                                                   &desc,
                                                   D3D12_RESOURCE_STATE_COMMON,
                                                   NULL,
-                                                  IID_GRAPHICS_PPV_ARGS(&d3d12_res));
+                                                  IID_PPV_ARGS(&d3d12_res));
    }
 
    if (FAILED(hres))
@@ -467,7 +467,7 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
    } else if (handle->type == WINSYS_HANDLE_TYPE_D3D12_HEAP) {
       d3d12_heap = (ID3D12Heap*)handle->com_obj;
    } else {
-      screen->dev->OpenSharedHandle(d3d_handle, IID_GRAPHICS_PPV_ARGS(&d3d12_res));
+      screen->dev->OpenSharedHandle(d3d_handle, IID_PPV_ARGS(&d3d12_res));
    }
 
 #ifdef _WIN32

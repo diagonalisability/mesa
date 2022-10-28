@@ -326,7 +326,7 @@ create_gfx_pipeline_state(struct d3d12_context *ctx)
 
    ID3D12PipelineState *ret;
    if (FAILED(screen->dev->CreateGraphicsPipelineState(&pso_desc,
-                                                       IID_GRAPHICS_PPV_ARGS(&ret)))) {
+                                                       IID_PPV_ARGS(&ret)))) {
       debug_printf("D3D12: CreateGraphicsPipelineState failed!\n");
       return NULL;
    }
@@ -453,7 +453,7 @@ create_compute_pipeline_state(struct d3d12_context *ctx)
 
    ID3D12PipelineState *ret;
    if (FAILED(screen->dev->CreateComputePipelineState(&pso_desc,
-                                                      IID_GRAPHICS_PPV_ARGS(&ret)))) {
+                                                      IID_PPV_ARGS(&ret)))) {
       debug_printf("D3D12: CreateComputePipelineState failed!\n");
       return NULL;
    }
