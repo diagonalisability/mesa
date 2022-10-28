@@ -30,9 +30,12 @@
 
 /* Handles */
 typedef void* HMONITOR;
+
+/* Stubs */
 #define WindowFromDC(hdc) (HWND)hdc
 #define GetDC(hwnd) (HDC)hwnd
 #define ReleaseDC(hwnd, hdc) 1
+#define StretchDIBits(hdc, xDest, yDest, DestWidth, DestHeight, xSrc, ySrc, SrcWidth, SrcHeight, lpBits, lpbmi, iUsage, rop) 0
 
 /* Layer plane descriptor */
 typedef struct tagLAYERPLANEDESCRIPTOR { // lpd

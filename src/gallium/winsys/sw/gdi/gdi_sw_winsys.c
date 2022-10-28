@@ -198,14 +198,12 @@ gdi_sw_display( struct sw_winsys *winsys,
                 struct sw_displaytarget *dt,
                 HDC hDC )
 {
-#ifndef _GAMING_XBOX
     struct gdi_sw_displaytarget *gdt = gdi_sw_displaytarget(dt);
 
     StretchDIBits(hDC,
                   0, 0, gdt->width, gdt->height,
                   0, 0, gdt->width, gdt->height,
                   gdt->data, &gdt->bmi, 0, SRCCOPY);
-#endif
 }
 
 static void
