@@ -42,15 +42,12 @@
 #include <GL/gl.h>
 
 #include "util/u_debug.h"
+#include "stw_gdishim.h"
 #include "gldrv.h"
 #include "stw_context.h"
 #include "stw_pixelformat.h"
 #include "stw_wgl.h"
 #include "stw_ext_context.h"
-
-#ifdef _GAMING_XBOX
-WINGDIAPI BOOL  WINAPI wglDeleteContext(HGLRC);
-#endif
 
 WINGDIAPI BOOL APIENTRY
 wglCopyContext(

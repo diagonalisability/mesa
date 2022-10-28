@@ -39,6 +39,7 @@
 #include "stw_device.h"
 #include "stw_winsys.h"
 #include "stw_pixelformat.h"
+#include "stw_gdishim.h"
 #include "gldrv.h"
 #include "stw_tls.h"
 #include "stw_framebuffer.h"

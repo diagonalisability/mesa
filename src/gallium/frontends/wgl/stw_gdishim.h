@@ -24,7 +24,15 @@
 #ifndef STW_GDISHIM_H
 #define STW_GDISHIM_H
 
+#ifdef _GAMING_XBOX
+
 #include <windows.h>
+
+/* Handles */
+typedef void* HMONITOR;
+#define WindowFromDC(hdc) (HWND)hdc
+#define GetDC(hwnd) (HDC)hwnd
+#define ReleaseDC(hwnd, hdc) 1
 
 /* Layer plane descriptor */
 typedef struct tagLAYERPLANEDESCRIPTOR { // lpd
@@ -54,6 +62,7 @@ typedef struct tagLAYERPLANEDESCRIPTOR { // lpd
    COLORREF crTransparent;
 } LAYERPLANEDESCRIPTOR, * PLAYERPLANEDESCRIPTOR, FAR* LPLAYERPLANEDESCRIPTOR;
 
+/* WGL */
 typedef struct _WGLSWAP
 {
    HDC hdc;
@@ -65,6 +74,8 @@ typedef struct _WGLSWAP
 WINGDIAPI DWORD WINAPI
 wglSwapMultipleBuffers(UINT n,
    CONST WGLSWAP* ps);
+
+WINGDIAPI BOOL  WINAPI wglDeleteContext(HGLRC);
 
 /* wglSwapLayerBuffers flags */
 #define WGL_SWAP_MAIN_PLANE     0x00000001
@@ -99,5 +110,20 @@ typedef struct tagPIXELFORMATDESCRIPTOR
    DWORD dwVisibleMask;
    DWORD dwDamageMask;
 } PIXELFORMATDESCRIPTOR, * PPIXELFORMATDESCRIPTOR, FAR* LPPIXELFORMATDESCRIPTOR;
+
+/* Bitmap Info */
+typedef struct tagRGBQUAD {
+   BYTE rgbBlue;
+   BYTE rgbGreen;
+   BYTE rgbRed;
+   BYTE rgbReserved;
+} RGBQUAD;
+
+typedef struct tagBITMAPINFO {
+   BITMAPINFOHEADER bmiHeader;
+   RGBQUAD          bmiColors[1];
+} BITMAPINFO, * LPBITMAPINFO, * PBITMAPINFO;
+
+#endif /* _GAMING_XBOX */
 
 #endif /* STW_PIXELFORMAT_H */
