@@ -200,13 +200,34 @@ d3d12_wgl_framebuffer_resize(stw_winsys_framebuffer *fb,
 }
 
 static boolean
-d3d12_wgl_framebuffer_present(stw_winsys_framebuffer *fb)
+d3d12_wgl_framebuffer_present(stw_winsys_framebuffer *fb, int interval)
 {
    auto framebuffer = d3d12_wgl_framebuffer(fb);
    D3D12XBOX_PRESENT_PLANE_PARAMETERS planeParams = {};
    planeParams.Token = framebuffer->screen->frame_token;
    planeParams.ResourceCount = 1;
    planeParams.ppResources = &framebuffer->images[current_backbuffer_index];
+
+   IDXGIDevice1* dxgiDevice;
+   framebuffer->screen->dev->QueryInterface(IID_PPV_ARGS(&dxgiDevice));
+   IDXGIAdapter* dxgiAdapter;
+   dxgiDevice->GetAdapter(&dxgiAdapter);
+   IDXGIOutput* dxgiOutput;
+   dxgiAdapter->EnumOutputs(0, &dxgiOutput);
+   // this function might have some overhead, so it might be
+   // worth to only call it when "interval" changes
+   framebuffer->screen->dev->SetFrameIntervalX(
+      dxgiOutput,
+      D3D12XBOX_FRAME_INTERVAL_60_HZ,
+      interval,
+      D3D12XBOX_FRAME_INTERVAL_FLAG_NONE
+   );
+   framebuffer->screen->dev->ScheduleFrameEventX(
+      D3D12XBOX_FRAME_EVENT_ORIGIN,
+      0U,
+      nullptr,
+      D3D12XBOX_SCHEDULE_FRAME_EVENT_FLAG_NONE
+   );
 
    framebuffer->screen->cmdqueue->PresentX(1, &planeParams, nullptr);
 

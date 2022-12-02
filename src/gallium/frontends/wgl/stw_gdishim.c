@@ -51,14 +51,16 @@ BOOL SetPixelFormat(
    const PIXELFORMATDESCRIPTOR* ppfd
 )
 {
+// TODO: can we support this?
+#if 0
    struct stw_framebuffer* fb;
 
    fb = stw_framebuffer_from_hdc(hdc);
-   if (fb) {
-      fb->iPixelFormat = format;
+   if (fb && fb->pfi) {
+      fb->pfi->iPixelFormat = format;
       stw_framebuffer_unlock(fb);
       return TRUE;
    }
-
+#endif
    return FALSE;
 }

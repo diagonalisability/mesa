@@ -1044,6 +1044,7 @@ static void strcat_without_spaces(char *dst, const char *src)
 static void
 hud_graph_set_dump_file(struct hud_graph *gr)
 {
+#ifndef _GAMING_XBOX // FIXME: "access" isn't available on Xbox
    const char *hud_dump_dir = getenv("GALLIUM_HUD_DUMP_DIR");
 
    if (hud_dump_dir && access(hud_dump_dir, W_OK) == 0) {
@@ -1061,6 +1062,7 @@ hud_graph_set_dump_file(struct hud_graph *gr)
          free(dump_file);
       }
    }
+#endif
 }
 
 /**

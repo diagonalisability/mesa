@@ -30,7 +30,10 @@
 bool
 u_memstream_open(struct u_memstream *mem, char **bufp, size_t *sizep)
 {
-#if defined(_WIN32) && !defined(_GAMING_XBOX)
+#ifdef _GAMING_XBOX
+   // FIXME: the Windows implementation doesn't work because GetTempFileName isn't defined
+   return false;
+#elif defined(_WIN32)
    bool success = false;
 
    char path[MAX_PATH];

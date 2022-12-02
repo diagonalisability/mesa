@@ -111,6 +111,7 @@ get_validator_version(IDxcValidator *val)
    return NO_DXIL_VALIDATION;
 }
 
+#ifndef _GAMING_XBOX
 static uint64_t
 get_dll_version(HMODULE mod)
 {
@@ -149,11 +150,13 @@ get_dll_version(HMODULE mod)
    free(version_data);
    return ret;
 }
+#endif
 
 static enum dxil_validator_version
 get_filtered_validator_version(HMODULE mod, enum dxil_validator_version raw)
 {
    switch (raw) {
+#ifndef _GAMING_XBOX
    case DXIL_VALIDATOR_1_6: {
       uint64_t dxil_version = get_dll_version(mod);
       static constexpr uint64_t known_bad_version =
@@ -163,6 +166,7 @@ get_filtered_validator_version(HMODULE mod, enum dxil_validator_version raw)
          return DXIL_VALIDATOR_1_5;
       FALLTHROUGH;
    }
+#endif
    default:
       return raw;
    }

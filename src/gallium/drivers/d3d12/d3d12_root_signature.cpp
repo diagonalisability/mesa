@@ -83,11 +83,15 @@ init_range(D3D12_DESCRIPTOR_RANGE1 *range,
    range->NumDescriptors = num_descs;
    range->BaseShaderRegister = base_shader_register;
    range->RegisterSpace = register_space;
+#ifdef _GAMING_XBOX
+   range->Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
+#else
    if (type == D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER ||
        type == D3D12_DESCRIPTOR_RANGE_TYPE_UAV)
       range->Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
    else
       range->Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_STATIC_KEEPING_BUFFER_BOUNDS_CHECKS;
+#endif
    range->OffsetInDescriptorsFromTableStart = offset_from_start;
 }
 

@@ -865,7 +865,22 @@ create_device(IUnknown *adapter)
    params.ComputeScratchMemorySizeBytes = D3D12XBOX_DEFAULT_SIZE_BYTES;
 
    ID3D12Device3 *dev;
-   HRESULT res = D3D12XboxCreateDevice(NULL, &params, IID_PPV_ARGS(&dev));
+   util_dl_library *d3d12_mod = util_dl_open(
+      UTIL_DL_PREFIX
+#ifdef _GAMING_XBOX_SCARLETT
+      "d3d12_xs"
+#else
+      "d3d12_x"
+#endif
+      UTIL_DL_EXT
+   );
+   if (!d3d12_mod) {
+      debug_printf("D3D12: failed to load D3D12 DLL\n");
+      return NULL;
+   }
+   auto *const create_device = (decltype(D3D12XboxCreateDevice)*) util_dl_get_proc_address(d3d12_mod, "D3D12XboxCreateDevice");
+
+   HRESULT res = create_device(NULL, &params, IID_PPV_ARGS(&dev));
    if (SUCCEEDED(res))
       return dev;
 

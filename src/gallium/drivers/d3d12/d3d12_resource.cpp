@@ -853,7 +853,12 @@ d3d12_memobj_create_from_handle(struct pipe_screen *pscreen, struct winsys_handl
    }
 
    struct d3d12_screen *screen = d3d12_screen(pscreen);
-   IUnknown *obj;
+#ifdef _GAMING_XBOX
+   IGraphicsUnknown
+#else
+   IUnknown
+#endif
+      *obj;
 #ifdef _WIN32
       HANDLE d3d_handle = handle->handle;
 #else
@@ -888,8 +893,10 @@ d3d12_memobj_create_from_handle(struct pipe_screen *pscreen, struct winsys_handl
    }
    memobj->base.dedicated = dedicated;
 
+#ifndef _GAMING_XBOX // FIXME: Jesse, are we able to provide these on console?
    (void)obj->QueryInterface(&memobj->res);
    (void)obj->QueryInterface(&memobj->heap);
+#endif
    obj->Release();
    if (!memobj->res && !memobj->heap) {
       debug_printf("d3d12: Memory object isn't a resource or heap\n");
